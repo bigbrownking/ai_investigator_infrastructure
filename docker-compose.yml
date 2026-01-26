@@ -84,7 +84,7 @@ services:
   # Main Service (digital)
   digital-service:
     build:
-      context: ./digital
+      context: ./ai_investigator
       dockerfile: Dockerfile
     container_name: digital-service
     ports:
@@ -138,7 +138,7 @@ services:
   # Digital Mediator Service
   digital-mediator-service:
     build:
-      context: ./digital_mediator
+      context: ./ai_investigator_consumer
       dockerfile: Dockerfile
     container_name: digital-mediator-service
     ports:
