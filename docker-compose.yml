@@ -6,17 +6,18 @@ services:
     image: postgres:15-alpine
     container_name: postgres
     environment:
-      POSTGRES_DB: digital_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -26,8 +27,8 @@ services:
     image: mongo:7
     container_name: mongodb
     environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
     ports:
       - "27017:27017"
     volumes:
@@ -46,8 +47,8 @@ services:
     container_name: minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -66,8 +67,8 @@ services:
     image: rabbitmq:3-management-alpine
     container_name: rabbitmq
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -91,37 +92,37 @@ services:
       - "5556:5556"
     environment:
       # Database
-      DATABASE_URL: jdbc:postgresql://postgres:5432/digital_db
-      DATABASE_USERNAME: postgres
-      DATABASE_PASSWORD: postgres
-      DRIVER_CLASS_NAME: org.postgresql.Driver
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DRIVER_CLASS_NAME: ${DRIVER_CLASS_NAME}
 
       # JWT
-      JWT_SECRET: your-secret-key-change-this-in-production
-      JWT_EXPIRATION: 3600000
-      JWT_REFRESH_EXPIRATION: 86400000
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION}
 
       # MinIO
-      MINIO_URL: http://minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-      MINIO_BUCKET_NAME: digital-bucket
+      MINIO_URL: ${MINIO_URL}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
 
       # MongoDB
-      MONGO_URI: mongodb://admin:admin@mongodb:27017/digital?authSource=admin
-      MONGO_DATABASE: digital
+      MONGO_URI: ${MONGO_URI}
+      MONGO_DATABASE: ${MONGO_DATABASE}
 
       # RabbitMQ
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: guest
-      RABBITMQ_PASSWORD: guest
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
 
-      # AI Models (update these based on your setup)
-      QUALIFICATION_MODEL_HOST: localhost
-      QUALIFICATION_MODEL_PORT: 8001
-      INDICTMENT_MODEL_HOST: localhost
-      INDICTMENT_MODEL_PORT: 8002
+      # AI Models
+      QUALIFICATION_MODEL_HOST: ${QUALIFICATION_MODEL_HOST}
+      QUALIFICATION_MODEL_PORT: ${QUALIFICATION_MODEL_PORT}
+      INDICTMENT_MODEL_HOST: ${INDICTMENT_MODEL_HOST}
+      INDICTMENT_MODEL_PORT: ${INDICTMENT_MODEL_PORT}
     depends_on:
       postgres:
         condition: service_healthy
@@ -144,26 +145,26 @@ services:
     ports:
       - "6665:6665"
     environment:
-      # Database (if needed for mediator)
-      DATABASE_URL: jdbc:postgresql://postgres:5432/digital_db
-      DATABASE_USERNAME: postgres
-      DATABASE_PASSWORD: postgres
-      DRIVER_CLASS_NAME: org.postgresql.Driver
+      # Database
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DRIVER_CLASS_NAME: ${DRIVER_CLASS_NAME}
 
       # MinIO
-      MINIO_URL: http://minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-      MINIO_BUCKET_NAME: mediator-bucket
+      MINIO_URL: ${MINIO_URL}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET_NAME: ${MINIO_MEDIATOR_BUCKET_NAME}
 
       # RabbitMQ
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: guest
-      RABBITMQ_PASSWORD: guest
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
 
       # AI Model
-      AI_MODEL_URL: http://localhost:8000
+      AI_MODEL_URL: ${AI_MODEL_URL}
     depends_on:
       minio:
         condition: service_healthy
