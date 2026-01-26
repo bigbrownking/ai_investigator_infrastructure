@@ -1,0 +1,184 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_DB: digital_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - app-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO Object Storage
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - app-network
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Main Service (digital)
+  digital-service:
+    build:
+      context: ./digital
+      dockerfile: Dockerfile
+    container_name: digital-service
+    ports:
+      - "5556:5556"
+    environment:
+      # Database
+      DATABASE_URL: jdbc:postgresql://postgres:5432/digital_db
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: postgres
+      DRIVER_CLASS_NAME: org.postgresql.Driver
+
+      # JWT
+      JWT_SECRET: your-secret-key-change-this-in-production
+      JWT_EXPIRATION: 3600000
+      JWT_REFRESH_EXPIRATION: 86400000
+
+      # MinIO
+      MINIO_URL: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET_NAME: digital-bucket
+
+      # MongoDB
+      MONGO_URI: mongodb://admin:admin@mongodb:27017/digital?authSource=admin
+      MONGO_DATABASE: digital
+
+      # RabbitMQ
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: guest
+      RABBITMQ_PASSWORD: guest
+
+      # AI Models (update these based on your setup)
+      QUALIFICATION_MODEL_HOST: localhost
+      QUALIFICATION_MODEL_PORT: 8001
+      INDICTMENT_MODEL_HOST: localhost
+      INDICTMENT_MODEL_PORT: 8002
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Digital Mediator Service
+  digital-mediator-service:
+    build:
+      context: ./digital_mediator
+      dockerfile: Dockerfile
+    container_name: digital-mediator-service
+    ports:
+      - "6665:6665"
+    environment:
+      # Database (if needed for mediator)
+      DATABASE_URL: jdbc:postgresql://postgres:5432/digital_db
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: postgres
+      DRIVER_CLASS_NAME: org.postgresql.Driver
+
+      # MinIO
+      MINIO_URL: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET_NAME: mediator-bucket
+
+      # RabbitMQ
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: guest
+      RABBITMQ_PASSWORD: guest
+
+      # AI Model
+      AI_MODEL_URL: http://localhost:8000
+    depends_on:
+      minio:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  minio_data:
+  rabbitmq_data:
+
+networks:
+  app-network:
+    driver: bridge
