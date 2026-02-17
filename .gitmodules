@@ -4,3 +4,6 @@
 [submodule "ai_investigator_consumer"]
 	path = ai_investigator_consumer
 	url = https://github.com/bigbrownking/ai_investigator_consumer.git
+[submodule "ai_investigator_interrogation"]
+	path = ai_investigator_interrogation
+	url = https://github.com/bigbrownking/ai_investigator_interrogation.git
